@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "monte-carlo-monty-hall"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pandas = "^2.2.3"
+altair = "^5.4.1"
+vl-convert-python = "^1.7.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
