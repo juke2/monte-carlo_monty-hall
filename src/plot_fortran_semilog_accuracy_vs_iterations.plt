@@ -19,12 +19,14 @@ set logscale y 10
 set output './images/gnuplot_fortran_accuracy_vs_iterations_graph.png'
 
 p(x) = abs(pi - x)
-f(x) = a * exp(b * x)     
-g(x) = c * exp(d * x)   
-fit f(x) './src/output/fortran_out.txt' using 3:(p($1)) via a,b
-fit g(x) './src/output/fortran_out_multithread.txt' using 3:(p($1)) via c,d
+# f(x) = a * x + b
+# g(x) = c * x + d   
+# attempted to do exp regression here, but couldn't because the approximation was too small to be represented by double precision floating point.
+# linear regression, which is commented out, produces useless results.
+# fit f(x) './src/output/fortran_out.txt' using 3:(p($1)) via a,b
+# fit g(x) './src/output/fortran_out_multithread.txt' using 3:(p($1)) via c,d
 
 plot './src/output/fortran_out.txt' using 3:(p($1)) w p title "FORTRAN" lc rgb '#1e90ff', \
-f(x) title "" lc rgb '#1e90ff', \
-'./src/output/fortran_out_multithread.txt' using 3:(p($1)) w p title "FORTRAN (Multithreaded)" lc rgb '#FF2054', \
-g(x) title "" lc rgb '#FF2054'
+'./src/output/fortran_out_multithread.txt' using 3:(p($1)) w p title "FORTRAN (Multithreaded)" lc rgb '#FF2054'
+# f(x) title "" lc rgb '#1e90ff', \
+# g(x) title "" lc rgb '#FF2054'
