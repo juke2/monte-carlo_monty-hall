@@ -1,5 +1,5 @@
 set terminal pngcairo enhanced font "arial,10" fontscale 1.0 size 600, 400 
-set title "Simple Plots" font ",20"
+set title "Accuracy vs Iterations (Fortran)" font ",20"
 set key fixed left top vertical Right noreverse enhanced autotitle box lt black linewidth 1.000 dashtype solid
 set xrange [ * : * ] noreverse writeback
 set x2range [ * : * ] noreverse writeback

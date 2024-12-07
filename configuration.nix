@@ -73,6 +73,7 @@ in
     gcc
     gfortran
     gnuplot
+    ruby
   ];
 
   imports = [

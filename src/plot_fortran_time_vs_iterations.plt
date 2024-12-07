@@ -1,5 +1,5 @@
 set terminal pngcairo enhanced font "arial,10" fontscale 1.0 size 600, 400 
-set title "Simple Plots" font ",20"
+set title "Time Taken vs Iterations (Fortran)" font ",20"
 set key fixed left top vertical Right noreverse enhanced autotitle box lt black linewidth 1.000 dashtype solid
 set xrange [ * : * ] noreverse writeback
 set x2range [ * : * ] noreverse writeback
@@ -19,10 +19,10 @@ set output './images/gnuplot_fortran_time_vs_iterations_graph.png'
 
 f(x) = a*x + b     
 g(x) = c*x + d         
-fit f(x) './src/output/fortran_out.txt' using 2:3 via a,b
-fit g(x) './src/output/fortran_out_multithread.txt' using 2:3 via c,d
+fit f(x) './src/output/fortran_out.txt' using 3:2 via a,b
+fit g(x) './src/output/fortran_out_multithread.txt' using 3:2 via c,d
 
-plot './src/output/fortran_out.txt' using 2:3 w p title "FORTRAN" lc rgb '#1e90ff', \
+plot './src/output/fortran_out.txt' using 3:2 w p title "FORTRAN" lc rgb '#1e90ff', \
 f(x) title "" lc rgb '#1e90ff', \
-'./src/output/fortran_out_multithread.txt' using 2:3 w p title "FORTRAN (Multithreaded)" lc rgb '#FF2054', \
+'./src/output/fortran_out_multithread.txt' using 3:2 w p title "FORTRAN (Multithreaded)" lc rgb '#FF2054', \
 g(x) title "" lc rgb '#FF2054'

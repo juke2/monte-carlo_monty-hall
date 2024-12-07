@@ -91,6 +91,38 @@ def monte_carlo_data_collector_c(
     return pi_vals, iter_count, times
 
 
+def monte_carlo_point_data_collector(
+    iterations_for_test: int, deterministic: bool = False, twist: bool = False
+) -> list[list[int]]:
+    """
+    Runs C files, and parses pi values and time datum from output
+        Parameters:
+            iterations_for_test (int) : Acts as the number of iterations to collect points at.
+            twist (bool) : Flag that decides whether to generate points with the Mersenne Twister algorithm instead of C's default random series. Defaults to False.
+            deterministic (bool) : Flag that decides whether to generate points deterministically instead of stochastically. Not compatible with multithreading. Defaults to False.
+        Output:
+            Returns a list containing two other lists, the first representing x values and the second representing y values.
+
+            The indexing of each list corresponds to the other lists.
+            For example, the pi value at index 0 in the first list was calculated at the iteration count at index 0 in the second list -- etc.
+    """
+    point_list = [[], []]
+    subprocess.run(
+        f"./src/monte-carlo.exe {iterations_for_test} {random.randrange(0,32767)} 0 1 {multiprocessing.cpu_count()} {1 if twist else 0} {1 if deterministic else 0}",
+        stdout=sys.stdout,
+        shell=True,
+    )
+    with open("./src/output/output_monte_carlo_generated_points.txt") as f:
+        for point in f.read().split(","):
+            parsed_vals = re.findall(r"[0-9.]+", point)
+            # print(point)
+            # print(parsed_vals)
+            x_val, y_val = (float(element) for element in parsed_vals)
+            point_list[0].append(x_val)
+            point_list[1].append(y_val)
+    return point_list
+
+
 def monte_carlo_data_collector_fortran(
     step: int, max: int, multithread: bool = False
 ) -> tuple[list]:
@@ -129,9 +161,51 @@ def monte_carlo_data_collector_fortran(
     return pi_vals, iterations, times
 
 
+def speedup_data_collector(
+    iterations_for_test: int, iter_for_average: int, thread_count: int = None
+) -> tuple[list[float], list[int]]:
+    """
+    Runs C files, and parses pi values and time datum from output.
+    Configures C input for a speedup plot.
+        Parameters:
+            iterations_for_test (int) : Amount of iterations for each individual pi calculation.
+            iter_for_average (int) : Amount of iterations to use for time averages.
+            core_count (int) : Maximum amount of threads to use. Defaults to multiprocessing.cpu_count().
+        Output:
+            Returns multiple variables.
+            First variable is a list containing the time averages.
+            Second variable is a list containing the core count for said time averages.
+            Third variable is one of the inputs, iterations_for_test.
+
+            The indexing of each list corresponds to the other lists.
+            For example, the pi value at index 0 in the first list was calculated at the iteration count at index 0 in the second list -- etc.
+    """
+    time_avg_list, core_count_list = [], []
+    for core_num in range(
+        1, thread_count if thread_count else multiprocessing.cpu_count() + 1
+    ):
+        time_avg = 0
+        for iteration in range(iter_for_average):
+            with open("./src/output/output_monte_carlo_val.txt") as f:
+                subprocess.run(
+                    f"./src/monte-carlo.exe {iterations_for_test} {random.randrange(0,32767)} 1 0 {core_num} 0 0",
+                    stdout=sys.stdout,
+                    shell=True,
+                )
+                parsed_vals = re.findall(r"[0-9.]+", f.read())
+                val, time = (float(x) for x in parsed_vals)
+                time_avg += time
+        time_avg /= iter_for_average
+        time_avg_list.append(time_avg)
+        core_count_list.append(core_num)
+        # you could skip this second list, but I don't really feel like doing it in the graph function
+
+    return time_avg_list, core_count_list, iterations_for_test
+
+
 def main() -> None:
     """
-    Calculates values at different iteration counts for monte-carlo and monty-hall problems, and graphs them.
+    Calculates values at different iteration counts for monte-carlo and monty-hall, and graphs them.
     """
     time_dict = {}
     val_dict = {}
@@ -175,6 +249,18 @@ def main() -> None:
     switch_probs, no_switch_probs, iter_count = monty_hall_data_collector(10, 20000)
     graph_monty_hall(switch_probs, no_switch_probs, iter_count)
     run_gnuplot_files_fortran()
+    graph_speedup_vals(*speedup_data_collector(10000000, 100, 50))
+    point_dict = {}
+    point_dict["C"] = monte_carlo_point_data_collector(
+        10000, deterministic=False, twist=False
+    )
+    point_dict["C (Mersenne Twister)"] = monte_carlo_point_data_collector(
+        10000, deterministic=False, twist=True
+    )
+    point_dict["C (Deterministic)"] = monte_carlo_point_data_collector(
+        10000, deterministic=True, twist=False
+    )
+    graph_points(point_dict)
 
 
 def graph_time(time_datum: dict[str, list[float]], iteration_counts: list[int]) -> None:
@@ -235,11 +321,6 @@ def graph_time(time_datum: dict[str, list[float]], iteration_counts: list[int]) 
 
     base_time.save("./images/time_taken_over_iterations.png")
     log_time.save("./images/time_taken_over_iterations_LOG.png")
-
-
-def monte_carlo_point_data_collector() -> None:
-    "Not implemented yet."
-    pass
 
 
 def run_gnuplot_files_fortran() -> None:
@@ -360,6 +441,86 @@ def graph_monty_hall(
     ).mark_line(size=4)
 
     base_monty.save("./images/monty_hall.png")
+
+
+def graph_speedup_vals(
+    time_avg_datum: list[float], core_count_list: list[int], iterations_for_tests: int
+) -> None:
+    """
+    Graphs probability when switching guess and not switching guess over iterations.
+    Produces one graph, a linear plot.
+    This graph contains an approximated line of best fit created by linear regression.
+
+    Parameters:
+        switch_probs (list[float]) : List that contains the probability when switching for a given iteration count.
+        no_switch_probs (list[float]) : List that contains the probability when not switching for a given iteration count
+        iterations (list[int]) : List that contains iteration counts that correspond to the lists contained in time_datum.
+    Output:
+        Creates one output file, "monty_hall.png"
+    """
+    speedup_transform = {
+        f"Average Speedup Factor (at {iterations_for_tests} iterations)": [
+            time_avg_datum[0] / datapoint for datapoint in time_avg_datum
+        ],
+        "Thread Count": core_count_list,
+    }
+
+    speedup_source = pd.DataFrame(speedup_transform)
+
+    base_speedup = (
+        alt.Chart(speedup_source)
+        .mark_circle(opacity=0.5)
+        .encode(
+            alt.X("Thread Count").scale(domainMin=1),
+            alt.Y(f"Average Speedup Factor (at {iterations_for_tests} iterations)"),
+        )
+    )
+
+    # base_speedup = base_speedup + base_speedup.transform_regression(
+    #     "Number of Iterations",
+    #     "Accuracy of pi (abs(real - calc))",
+    #     extent=[0, max(core_count_list)],
+    #     method="exp",
+    # ).mark_line(size=4)
+
+    base_speedup.save("./images/speedup_c_multithread.png")
+
+
+def graph_points(point_datum: dict[tuple[list[int]]]):
+    """
+    Graphs an approximation of 1/4 of a circle as well as generated random or deterministic attempts at Monte-Carlo integration.
+
+    Parameters:
+        point_datum (dict[list[list[int]]]) : Dictionary containing sources and x and y values.
+    Output:
+        Creates one output file, "points_collected.png"
+    """
+    point_transform = {
+        "Source": [key for key in point_datum.keys() for x in point_datum[key][0]],
+        "X": [x for key in point_datum.keys() for x in point_datum[key][0]],
+        "Y": [y for key in point_datum.keys() for y in point_datum[key][1]],
+    }
+
+    point_source = pd.DataFrame(point_transform)
+
+    base_point = (
+        alt.Chart(point_source)
+        .mark_circle(opacity=1, size=5)
+        .encode(alt.X("X"), alt.Y("Y"), color="Source")
+    )
+    circle_func = lambda x: math.sqrt(1 - x**2)
+
+    circle_source = pd.DataFrame(
+        {
+            "X": [x / 10000 for x in range(0, 10000)],
+            "Y": [circle_func(x / 10000) for x in range(0, 10000)],
+        }
+    )
+    circle_graph = alt.Chart(circle_source).mark_line().encode(alt.X("X"), alt.Y("Y"))
+
+    base_point = base_point + circle_graph
+
+    base_point.save("./images/points_collected.png")
 
 
 if __name__ == "__main__":

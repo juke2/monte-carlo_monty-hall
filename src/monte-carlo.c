@@ -170,6 +170,7 @@ double monte_carlo(int iterations)
     else
     {
         int *series = mersenne_twister(rand(), iterations * 2);
+        int out_index = 0;
         for (int i = iterations * 2 - 1; i >= 0; i -= 2)
         {
 
@@ -181,8 +182,9 @@ double monte_carlo(int iterations)
             }
             if (output_points)
             {
-                x_array[i] = random_x;
-                y_array[i] = random_y;
+                x_array[out_index] = random_x;
+                y_array[out_index] = random_y;
+                out_index++;
             }
         }
         free(series);
@@ -194,7 +196,7 @@ double monte_carlo(int iterations)
         file_pointer = fopen("src/output/output_monte_carlo_generated_points.txt", "w");
         for (int point = 0; point < iterations; point++)
         {
-            fprintf(file_pointer, "(%.30f,%.30f)", x_array[point], y_array[point]);
+            fprintf(file_pointer, "(%.30f %.30f)", x_array[point], y_array[point]);
             if (point != iterations - 1)
             {
                 fprintf(file_pointer, ",");
@@ -215,18 +217,44 @@ double monte_carlo_deterministic(int iterations)
     double real_x, real_y;
     int in_circle = 0;
     int iter_per_side = (int)(sqrt((double)iterations));
-    for (double x = 0; x <= iter_per_side; x++)
+    double *x_array = (double *)malloc(iterations * sizeof(double));
+    double *y_array = (double *)malloc(iterations * sizeof(double));
+    for (int x = 0; x < iter_per_side; x++)
     {
-        for (double y = 0; y <= iter_per_side; y++)
+        for (int y = 0; y < iter_per_side; y++)
         {
-            real_x = (double)x / (double)iter_per_side;
-            real_y = (double)y / (double)iter_per_side;
+
+            real_x = ((double)x) / (double)iter_per_side;
+            real_y = ((double)y) / (double)iter_per_side;
+            if (output_points)
+            {
+                x_array[x * (iter_per_side) + y] = real_x;
+                y_array[x * (iter_per_side) + y] = real_y;
+            }
             if (real_x * real_x + real_y * real_y < 1)
             {
                 in_circle++;
             }
         }
     }
+    if (output_points)
+    {
+        FILE *file_pointer;
+        file_pointer = fopen("src/output/output_monte_carlo_generated_points.txt", "w");
+        for (int point = 0; point < iterations; point++)
+        {
+            fprintf(file_pointer, "(%.30f %.30f)", x_array[point], y_array[point]);
+            if (point != iterations - 1)
+            {
+                fprintf(file_pointer, ",");
+            }
+        }
+        fclose(file_pointer);
+    }
+    free(x_array);
+    free(y_array);
+    x_array = NULL;
+    y_array = NULL;
 
     return 4.0 * ((double)in_circle / (double)(iter_per_side * iter_per_side));
 }
@@ -256,11 +284,11 @@ int main(int argc, char **argv)
         if (argc >= 7 && atoi(argv[6]) == 1)
         {
             point_cont.twist = true;
-        } // use Mersenne Twister
+        } // Use Mersenne Twister
         if (argc >= 8 && atoi(argv[7]) == 1)
         {
             deterministic = true;
-        }
+        } // Use deterministic
         if (argc)
             if (deterministic)
             {
