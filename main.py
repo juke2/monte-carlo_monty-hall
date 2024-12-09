@@ -252,13 +252,13 @@ def main() -> None:
     graph_speedup_vals(*speedup_data_collector(10000000, 100, 50))
     point_dict = {}
     point_dict["C"] = monte_carlo_point_data_collector(
-        10000, deterministic=False, twist=False
+        1000, deterministic=False, twist=False
     )
     point_dict["C (Mersenne Twister)"] = monte_carlo_point_data_collector(
-        10000, deterministic=False, twist=True
+        1000, deterministic=False, twist=True
     )
     point_dict["C (Deterministic)"] = monte_carlo_point_data_collector(
-        10000, deterministic=True, twist=False
+        1000, deterministic=True, twist=False
     )
     graph_points(point_dict)
 
@@ -289,7 +289,7 @@ def graph_time(time_datum: dict[str, list[float]], iteration_counts: list[int]) 
     # print(time_source)
 
     base_time = (
-        alt.Chart(time_source)
+        alt.Chart(time_source, title="Time Taken over Number of Iterations")
         .mark_circle(opacity=0.5)
         .encode(
             alt.X("Number of Iterations").scale(domainMin=0.0),
@@ -306,7 +306,7 @@ def graph_time(time_datum: dict[str, list[float]], iteration_counts: list[int]) 
     ).mark_line(size=4)
 
     log_time = (
-        alt.Chart(time_source)
+        alt.Chart(time_source, title="Time Taken over Number of Iterations")
         .mark_circle(opacity=0.5)
         .encode(
             alt.X("Number of Iterations"),
@@ -376,7 +376,7 @@ def graph_pi_vals(
     pi_source = pd.DataFrame(pi_transform)
 
     base_pi = (
-        alt.Chart(pi_source)
+        alt.Chart(pi_source, title="Accuracy of pi over Number of Iterations")
         .mark_circle(opacity=0.5)
         .encode(
             alt.X("Number of Iterations").scale(domainMin=0.0),
@@ -424,7 +424,10 @@ def graph_monty_hall(
     monty_source = pd.DataFrame(monty_transform)
 
     base_monty = (
-        alt.Chart(monty_source)
+        alt.Chart(
+            monty_source,
+            title="Probability of getting a prize over number of iterations",
+        )
         .mark_circle(opacity=0.5)
         .encode(
             alt.X("Number of Iterations").scale(domainMin=0.0),
@@ -468,7 +471,10 @@ def graph_speedup_vals(
     speedup_source = pd.DataFrame(speedup_transform)
 
     base_speedup = (
-        alt.Chart(speedup_source)
+        alt.Chart(
+            speedup_source,
+            title=f"Speedup Factor as Number of Threads increases. Core Count = {multiprocessing.cpu_count()}.",
+        )
         .mark_circle(opacity=0.5)
         .encode(
             alt.X("Thread Count").scale(domainMin=1),
@@ -504,7 +510,9 @@ def graph_points(point_datum: dict[tuple[list[int]]]):
     point_source = pd.DataFrame(point_transform)
 
     base_point = (
-        alt.Chart(point_source)
+        alt.Chart(
+            point_source, title="Random points generated with different algorithms."
+        )
         .mark_circle(opacity=1, size=5)
         .encode(alt.X("X"), alt.Y("Y"), color="Source")
     )
